@@ -113,15 +113,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         # More community tools available at: https://terminal.c1games.com/rules#Download
 
         # Place destructors that attack enemy units
-        destructor_locations = [[0, 13], [27, 13], [8, 11], [19, 11], [13, 11], [14, 11]]
+        destructor_locations = [[5, 10], [22, 10]]
         # attempt_spawn will try to spawn units if we have resources, and will check if a blocking unit is already there
         game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
         
         # Place filters in front of destructors to soak up damage for them
-        filter_locations = [[8, 12], [19, 12]]
+        upgraded_filter_locations = [[0, 13], [1, 13], [26, 13], [27, 13], [1, 12], [26, 12], [2, 11], [5, 11], [6, 11], [21, 11], [22, 11], [25, 11], [3, 10], [24, 10]]
+        nonupgraded_filter_locations = [[6, 9], [21, 9], [7, 8], [20, 8], [8, 7], [19, 7], [9, 6], [18, 6], [10, 5], [12, 5], [13, 5], [14, 5], [15, 5], [17, 5], [11, 4], [16, 4]]
+        filter_locations = upgraded_filter_locations + nonupgraded_filter_locations
         game_state.attempt_spawn(FILTER, filter_locations)
         # upgrade filters so they soak more damage
-        game_state.attempt_upgrade(filter_locations)
+        game_state.attempt_upgrade(upgraded_filter_locations)
 
     def build_reactive_defense(self, game_state):
         """
