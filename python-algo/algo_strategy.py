@@ -75,32 +75,117 @@ class AlgoStrategy(gamelib.AlgoCore):
         For offense we will use long range EMPs if they place stationary units near the enemy's front.
         If there are no stationary units to attack in the front, we will send Pings to try and score quickly.
         """
+        bits = game_state.number_affordable(PING)
+        if bits >= 16:
+            attack_choice = self.choose_attack(game_state)
+            ping_location = []
+            emp_location = []
+            if attack_choice == 0:
+                ping_location = [20, 6]
+                emp_location = [21, 7]
+                self.choose_corner(game_state, attack_choice == 0)
+            elif attack_choice == 1:
+                ping_location = [7, 6]
+                emp_location = [6, 7]
+                self.choose_corner(game_state, attack_choice == 0)
+            elif attack_choice == 2:
+                ping_location = [7, 6]
+                emp_location = [6, 7]
+            else:
+                ping_location = [20, 6]
+                emp_location = [21, 7]
+
+            game_state.attempt_spawn(PING, ping_location, 7)
+            game_state.attempt_spawn(EMP, emp_location, 3)
+        else:
+            pass
+
         # First, place basic defenses
         self.build_defences(game_state)
         # Now build reactive defenses based on where the enemy scored
 
-        # If the turn is less than 5, stall with Scramblers and wait to see enemy's base
-        if game_state.turn_number < 5:
-            self.stall_with_scramblers(game_state)
-        else:
-            # Now let's analyze the enemy base to see where their defenses are concentrated.
-            # If they have many units in the front we can build a line for our EMPs to attack them at long range.
-            if self.detect_enemy_unit(game_state, unit_type=None, valid_x=None, valid_y=[14, 15]) > 10:
-                self.emp_line_strategy(game_state)
+    def choose_attack(self, game_state):
+        primary_l = [[0, 14], [1, 14], [2, 14], [3, 14]]
+        filters_in_primary_l = []
+        secondary_l = [[1, 15], [2, 15], [3, 15], [2, 16], [3, 16], [3, 17]]
+        filters_in_secondary_l = []
+        in_attack_range_l = game_state.get_attackers([2, 13], 0)
+        for x in primary_l:
+            unit = game_state.contains_stationary_unit(x)
+            if unit and unit.unit_type == FILTER:
+                filters_in_primary_l.append(game_state.contains_stationary_unit(x))
+        for y in secondary_l:
+            if game_state.contains_stationary_unit(y):
+                filters_in_secondary_l.append(game_state.contains_stationary_unit(x))
+
+        primary_r = [[0, 14], [1, 14], [2, 14], [3, 14]]
+        filters_in_primary_r = []
+        secondary_r = [[1, 15], [2, 15], [3, 15], [2, 16], [3, 16], [3, 17]]
+        filters_in_secondary_r = []
+        in_attack_range_r = game_state.get_attackers([2, 13], 0)
+        for x in primary_r:
+            unit = game_state.contains_stationary_unit(x)
+            if unit and unit.unit_type == FILTER:
+                filters_in_primary_r.append(game_state.contains_stationary_unit(x))
+
+        for y in secondary_r:
+            if game_state.contains_stationary_unit(y):
+                filters_in_secondary_r.append(game_state.contains_stationary_unit(y))
+
+        left_side = []
+        for x in range(14):
+            for y in range(14, 28):
+                if x >= y - 14:
+                    left_side.append([x, y + 14])
+        right_side = []
+        for x in range(14, 28):
+            for y in range(14, 28):
+                if x < y + 14:
+                    right_side.append([x, y + 14])
+
+        filters_left_side = []
+        filters_right_side = []
+        destructors_left_side = []
+        destructors_right_side = []
+        for x in left_side:
+            unit = game_state.contains_stationary_unit(x)
+            if unit and unit.unit_type == FILTER:
+                filters_left_side.append(game_state.contains_stationary_unit(x))
+            elif unit and unit.unit_type == DESTRUCTOR:
+                destructors_left_side.append(game_state.contains_stationary_unit(x))
             else:
-                # They don't have many units in the front so lets figure out their least defended area and send Pings there.
+                pass
+        for x in right_side:
+            unit = game_state.contains_stationary_unit(x)
+            if unit and unit.unit_type == FILTER:
+                filters_right_side.append(game_state.contains_stationary_unit(x))
+            elif unit and unit.unit_type == DESTRUCTOR:
+                destructors_right_side.append(game_state.contains_stationary_unit(x))
+            else:
+                pass
 
-                # Only spawn Ping's every other turn
-                # Sending more at once is better since attacks can only hit a single ping at a time
-                if game_state.turn_number % 2 == 1:
-                    # To simplify we will just check sending them from back left and right
-                    ping_spawn_location_options = [[13, 0], [14, 0]]
-                    best_location = self.least_damage_spawn_location(game_state, ping_spawn_location_options)
-                    game_state.attempt_spawn(PING, best_location, 1000)
+        right_value = len(filters_right_side) + 3 * len(destructors_right_side)
+        left_value = len(filters_left_side) + 3 * len(destructors_left_side)
+        left = len(filters_in_primary_l) + len(filters_in_secondary_l) + 3 * len(in_attack_range_l)
+        right = len(filters_in_primary_r) + len(filters_in_secondary_r) + 3 * len(in_attack_range_r)
+        if left >= 15 and right >= 15:
+            if left_value <= right_value:
+                return 2
+            else:
+                return 3
+        if left <= right:
+            return 0
+        else:
+            return 1
 
-                # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
-                encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
-                game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
+    def choose_corner(self, game_state, left):
+        filter_locations = []
+        if left:
+            filter_locations = [[4, 12], [3, 13], [23, 11], [24, 11]]
+        else:
+            filter_locations = [[23, 12], [24, 13], [3, 11], [4, 11]]
+        game_state.attempt_spawn(FILTER, filter_locations)
+        game_state.attempt_remove(filter_locations)
 
     def build_defences(self, game_state):
         """
