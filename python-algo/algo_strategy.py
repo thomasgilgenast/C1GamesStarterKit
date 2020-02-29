@@ -28,6 +28,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.all_damages_taken = [None]
         self.all_damages_given = [None]
         self.l_r_damages = {}
+        self.total_hp_left = 0
+        self.total_hp_right = 0
+
 
     def on_game_start(self, config):
         """
@@ -75,6 +78,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         For offense we will use long range EMPs if they place stationary units near the enemy's front.
         If there are no stationary units to attack in the front, we will send Pings to try and score quickly.
         """
+        leftside = [[0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13], [11, 13], [12, 13], [13, 13], [1, 12], [2, 12], [3, 12], [4, 12], [5, 12], [6, 12], [7, 12], [8, 12], [9, 12], [10, 12], [11, 12], [12, 12], [13, 12], [2, 11], [3, 11], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11], [9, 11], [10, 11], [11, 11], [12, 11], [13, 11], [3, 10], [4, 10], [5, 10], [6, 10], [7, 10], [8, 10], [9, 10], [10, 10], [11, 10], [12, 10], [13, 10], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [11, 9], [12, 9], [13, 9], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8], [11, 8], [12, 8], [13, 8]]
+        self.build_defences(game_state)
         bits = game_state.number_affordable(PING)
         if bits >= 16:
             attack_choice = self.choose_attack(game_state)
@@ -101,7 +106,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             pass
 
         # First, place basic defenses
-        self.build_defences(game_state)
+
         # Now build reactive defenses based on where the enemy scored
 
     def choose_attack(self, game_state):
@@ -204,6 +209,30 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         # Useful tool for setting up your base locations: https://www.kevinbai.design/terminal-map-maker
         # More community tools available at: https://terminal.c1games.com/rules#Download
+        leftside = [[0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13],
+                    [11, 13], [12, 13], [13, 13], [1, 12], [2, 12], [3, 12], [4, 12], [5, 12], [6, 12], [7, 12],
+                    [8, 12], [9, 12], [10, 12], [11, 12], [12, 12], [13, 12], [2, 11], [3, 11], [4, 11], [5, 11],
+                    [6, 11], [7, 11], [8, 11], [9, 11], [10, 11], [11, 11], [12, 11], [13, 11], [3, 10], [4, 10],
+                    [5, 10], [6, 10], [7, 10], [8, 10], [9, 10], [10, 10], [11, 10], [12, 10], [13, 10], [4, 9], [5, 9],
+                    [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [11, 9], [12, 9], [13, 9], [5, 8], [6, 8], [7, 8], [8, 8],
+                    [9, 8], [10, 8], [11, 8], [12, 8], [13, 8]]
+        lefthp = 0
+        righthp = 0
+        leftunits = []
+        rightunits = []
+        for [x, y] in leftside:
+            leftunits.extend(game_state.game_map[x, y])
+
+        for unit in leftunits:
+            lefthp = lefthp + unit.health
+
+        for [x, y] in leftside:
+            rightunits.extend(game_state.game_map[(27 - x), y])
+
+        for unit in rightunits:
+            righthp = righthp + unit.health
+
+        dmgs = [(self.total_hp_left - lefthp), (self.total_hp_right - righthp)]
 
         # Place destructors that attack enemy units
         destructor_locations = [[5, 10], [22, 10]]
@@ -221,9 +250,9 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         secondary_destructors = [[1, 12], [26, 12]]
         game_state.attempt_spawn(DESTRUCTOR, secondary_destructors)
-        dmgs = self.turn_damage(game_state)
         encryptorlocs = [[13, 3], [14, 3], [13, 2], [14, 2], [13, 1], [14, 1]]
-        if sum(dmgs) < 20:
+
+        if sum(dmgs) < 1:
             game_state.attempt_spawn(ENCRYPTOR, encryptorlocs)
         else:
             if dmgs[0] > dmgs[1]:
@@ -231,10 +260,26 @@ class AlgoStrategy(gamelib.AlgoCore):
             else:
                 self.build_reactive_defense(1, game_state)
 
+        self.total_hp_left = 0
+        self.total_hp_right = 0
+
+        leftunits = []
+        rightunits = []
+        for [x, y] in leftside:
+            leftunits.extend(game_state.game_map[x, y])
+
+        for unit in leftunits:
+            self.total_hp_left = self.total_hp_left + unit.health
+
+        for [x, y] in leftside:
+            rightunits.extend(game_state.game_map[(27 - x), y])
+
+        for unit in rightunits:
+            self.total_hp_right = self.total_hp_right + unit.health
+
         # upgrade filters so they soak more damage
 
-
-    def build_reactive_defense(self, side, game_state):
+    def build_reactive_defense(self, game_state):
         """
         This function builds reactive defenses based on where the enemy scored on us from.
         We can track where the opponent scored by looking at events in action frames
@@ -242,6 +287,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         right_destructions = [[25, 11], [21, 10], [24, 10]]
         left_destructions = [[2, 11], [6, 10], [3, 10]]
+        for location in self.scored_on_locations:
+            # Build destructor one space above so that it doesn't block our own edge spawn locations
+            build_location = [location[0], location[1]+1]
+            game_state.attempt_spawn(DESTRUCTOR, build_location)
         if side == 0:
             game_state.attempt_spawn(DESTRUCTOR, left_destructions)
         else:
@@ -383,6 +432,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 damages_given.append(damage)
         self.all_damages_given.append(damages_given)
         self.all_damages_taken.append(damages_taken)
+        print(self.all_damages_taken)
 
         for breach in breaches:
             location = breach[0]
