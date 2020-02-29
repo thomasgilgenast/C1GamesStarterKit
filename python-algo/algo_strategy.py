@@ -109,40 +109,49 @@ class AlgoStrategy(gamelib.AlgoCore):
         filters_in_primary_l = []
         secondary_l = [[1, 15], [2, 15], [3, 15], [2, 16], [3, 16], [3, 17]]
         filters_in_secondary_l = []
-        in_attack_range_l = game_state.get_attackers([2, 13], 0)
+        destructors_l = []
+        # in_attack_range_l = game_state.get_attackers([2, 13], 0)
         for x in primary_l:
             unit = game_state.contains_stationary_unit(x)
             if unit and unit.unit_type == FILTER:
                 filters_in_primary_l.append(game_state.contains_stationary_unit(x))
+            if unit and unit.unit_type == DESTRUCTOR:
+                destructors_l.append(game_state.contains_stationary_unit(x))
         for y in secondary_l:
             if game_state.contains_stationary_unit(y):
-                filters_in_secondary_l.append(game_state.contains_stationary_unit(x))
+                filters_in_secondary_l.append(game_state.contains_stationary_unit(y))
+            if unit and unit.unit_type == DESTRUCTOR:
+                destructors_l.append(game_state.contains_stationary_unit(y))
 
-        primary_r = [[0, 14], [1, 14], [2, 14], [3, 14]]
+        primary_r = [[24, 14], [25, 14], [26, 14], [27, 14]]
         filters_in_primary_r = []
-        secondary_r = [[1, 15], [2, 15], [3, 15], [2, 16], [3, 16], [3, 17]]
+        secondary_r = [[26, 15], [25, 15], [24, 15], [25, 16], [24, 16], [25, 17]]
         filters_in_secondary_r = []
-        in_attack_range_r = game_state.get_attackers([2, 13], 0)
+        destructors_r = []
+        # in_attack_range_r = game_state.get_attackers([24, 13], 0)
+        gamelib.debug_write(" " + str(in_attack_range_r) + " " + str(in_attack_range_l) + " " + str(primary_l) + " " + str(secondary_l))
         for x in primary_r:
             unit = game_state.contains_stationary_unit(x)
             if unit and unit.unit_type == FILTER:
                 filters_in_primary_r.append(game_state.contains_stationary_unit(x))
-
+            if unit and unit.unit_type == DESTRUCTOR:
+                destructors_r.append(game_state.contains_stationary_unit(x))
         for y in secondary_r:
             if game_state.contains_stationary_unit(y):
                 filters_in_secondary_r.append(game_state.contains_stationary_unit(y))
+            if unit and unit.unit_type == DESTRUCTOR:
+                destructors_r.append(game_state.contains_stationary_unit(y))
 
         left_side = []
-        for x in range(14):
-            for y in range(14, 28):
-                if x >= y - 14:
+        for y in range(14):
+            for x in range(14):
+                if game_state.game_map.in_arena_bounds((x, y + 14)):
                     left_side.append([x, y + 14])
         right_side = []
-        for x in range(14, 28):
-            for y in range(14, 28):
-                if x < y + 14:
+        for y in range(14):
+            for x in range(14, 28):
+                if game_state.game_map.in_arena_bounds((x, y + 14)):
                     right_side.append([x, y + 14])
-
         filters_left_side = []
         filters_right_side = []
         destructors_left_side = []
@@ -166,8 +175,8 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         right_value = len(filters_right_side) + 3 * len(destructors_right_side)
         left_value = len(filters_left_side) + 3 * len(destructors_left_side)
-        left = len(filters_in_primary_l) + len(filters_in_secondary_l) + 3 * len(in_attack_range_l)
-        right = len(filters_in_primary_r) + len(filters_in_secondary_r) + 3 * len(in_attack_range_r)
+        left = len(filters_in_primary_l) + len(filters_in_secondary_l) + 3 * len(destructors_l)
+        right = len(filters_in_primary_r) + len(filters_in_secondary_r) + 3 * len(destructors_r)
         right_value_no_corner = right_value - right
         left_value_no_corner = left_value - left
 
@@ -177,7 +186,8 @@ class AlgoStrategy(gamelib.AlgoCore):
             return 2
         else:
             pass
-
+        print(str(left) + " " + str(right))
+        gamelib.debug_write(str(left) + " " + str(right))
         if left >= 10 and right >= 10:
             if left_value <= right_value:
                 return 2
@@ -219,10 +229,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(FILTER, secondary_filters)
         game_state.attempt_upgrade(primary_filters)
 
+        tertiary_filters = [[7, 8], [6, 9], [20, 8], [21, 9]]
+        game_state.attempt_spawn(FILTER, tertiary_filters)
         secondary_destructors = [[1, 12], [26, 12]]
         game_state.attempt_spawn(DESTRUCTOR, secondary_destructors)
         dmgs = self.turn_damage(game_state)
+        tertiary_destructors = [[2, 11], [25, 11], [6, 10], [21, 10], [3, 10], [24, 10]]
+        game_state.attempt_spawn(DESTRUCTOR, tertiary_destructors)
+        game_state.attempt_upgrade(primary_destructors + secondary_destructors + tertiary_destructors)
+        game_state.attempt_upgrade(secondary_filters + tertiary_filters)
         encryptorlocs = [[13, 3], [14, 3], [13, 2], [14, 2], [13, 1], [14, 1]]
+        game_state.attempt_spawn(ENCRYPTOR, encryptorlocs)
         if sum(dmgs) < 20:
             game_state.attempt_spawn(ENCRYPTOR, encryptorlocs)
         else:
@@ -232,7 +249,6 @@ class AlgoStrategy(gamelib.AlgoCore):
                 self.build_reactive_defense(1, game_state)
 
         # upgrade filters so they soak more damage
-
 
     def build_reactive_defense(self, side, game_state):
         """
