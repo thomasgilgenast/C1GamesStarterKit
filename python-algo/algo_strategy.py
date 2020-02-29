@@ -129,7 +129,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         filters_in_secondary_r = []
         destructors_r = []
         # in_attack_range_r = game_state.get_attackers([24, 13], 0)
-        gamelib.debug_write(" " + str(in_attack_range_r) + " " + str(in_attack_range_l) + " " + str(primary_l) + " " + str(secondary_l))
         for x in primary_r:
             unit = game_state.contains_stationary_unit(x)
             if unit and unit.unit_type == FILTER:
