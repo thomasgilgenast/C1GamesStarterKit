@@ -168,7 +168,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         left_value = len(filters_left_side) + 3 * len(destructors_left_side)
         left = len(filters_in_primary_l) + len(filters_in_secondary_l) + 3 * len(in_attack_range_l)
         right = len(filters_in_primary_r) + len(filters_in_secondary_r) + 3 * len(in_attack_range_r)
-        if left >= 15 and right >= 15:
+        right_value_no_corner = right_value - right
+        left_value_no_corner = left_value - left
+
+        if right_value_no_corner <= 6:
+            return 3
+        elif left_value_no_corner <= 6:
+            return 2
+        else:
+            pass
+
+        if left >= 10 and right >= 10:
             if left_value <= right_value:
                 return 2
             else:
@@ -208,6 +218,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                              [11, 4], [16, 4]]
         game_state.attempt_spawn(FILTER, secondary_filters)
         game_state.attempt_upgrade(primary_filters)
+
         secondary_destructors = [[1, 12], [26, 12]]
         game_state.attempt_spawn(DESTRUCTOR, secondary_destructors)
         dmgs = self.turn_damage(game_state)
