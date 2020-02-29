@@ -401,8 +401,12 @@ class Unit:
 			self.patches[1].set_alpha(0.3)
 
 		if self.stability > MAX_HP[self.unit_type]:
-			self.patches[1].set_fill(False)
-			self.patches[1].set_alpha(0.5)
+			# TODO: handle upgraded filters
+			# upgraded filters land here but can't get a "glow" effect because
+			# they have no second patch
+			if len(self.patches) > 1:
+				self.patches[1].set_fill(False)
+				self.patches[1].set_alpha(0.5)
 
 	# checks the stability and if greater than max for a mobile unit adds a new Circle
 	def check_stability(self, count, ax):
@@ -1053,7 +1057,8 @@ class Graph:
 
 	# format all of the raw unit data into how my functions recieve it
 	def cache_units(self, units, p_index):
-		filters, encryptors, destructors, pings, emps, scramblers, removes = units
+		# TODO: record upgrade information somehow?
+		filters, encryptors, destructors, pings, emps, scramblers, removes, upgrades = units
 		units_new = []
 		for unit in filters: units_new.append((FILTER, (unit[0], unit[1]), unit[2], p_index, unit[3]))
 		for unit in encryptors: units_new.append((ENCRYPTOR, (unit[0], unit[1]), unit[2], p_index, unit[3]))
